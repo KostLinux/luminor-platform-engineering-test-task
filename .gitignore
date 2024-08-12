@@ -1,0 +1,4 @@
+.env
+newrelic-infra/newrelic-infra.yml
+.terraform/
+.terraform.lock.hcl

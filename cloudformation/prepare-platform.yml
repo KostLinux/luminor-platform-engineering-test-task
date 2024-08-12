@@ -1,0 +1,61 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template to create an ECR repository and an encrypted SQS queue.
+
+Parameters:
+  RepositoryName:
+    Description: "The name of the ECR repository"
+    Type: String
+    Default: "messager-web-app"
+    AllowedPattern: "^[a-zA-Z0-9-_]+$"
+    ConstraintDescription: "The repository name can contain only alphanumeric characters, hyphens, and underscores."
+
+  QueueName:
+    Description: "The name of the SQS queue"
+    Type: String
+    Default: "my-encrypted-queue"
+    AllowedPattern: "^[a-zA-Z0-9-_]+$"
+    ConstraintDescription: "The queue name can contain only alphanumeric characters, hyphens, and underscores."
+
+Resources:
+  # ECR Repository
+  ECRRepository:
+    Type: "AWS::ECR::Repository"
+    Properties:
+      RepositoryName: !Ref RepositoryName
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Expire images older than 7 days",
+                "selection": {
+                  "tagStatus": "any",
+                  "countType": "sinceImagePushed",
+                  "countUnit": "days",
+                  "countNumber": 7
+                },
+                "action": {
+                  "type": "expire"
+                }
+              }
+            ]
+          }
+
+  # SQS Queue
+  EncryptedSQSQueue:
+    Type: "AWS::SQS::Queue"
+    Properties:
+      QueueName: !Ref QueueName
+      KmsMasterKeyId: "alias/aws/sqs"
+      MessageRetentionPeriod: 86400
+      VisibilityTimeout: 120
+
+Outputs:
+  ECRRepositoryUri:
+    Description: "URI of the ECR repository"
+    Value: !GetAtt ECRRepository.RepositoryUri
+
+  SQSQueueUrl:
+    Description: "URL of the encrypted SQS queue"
+    Value: !Ref EncryptedSQSQueue
